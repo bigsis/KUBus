@@ -1,22 +1,16 @@
 package kubus.ws.ku.kubus;
 
-import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Color;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.media.RingtoneManager;
-import android.net.Uri;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.support.v4.app.FragmentActivity;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -27,6 +21,7 @@ import android.widget.Toast;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
@@ -37,9 +32,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -85,7 +78,7 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMarker
     private WebSocketConnection wsc = new WebSocketConnection();
     private ParseBusXml pbx;
     private MarkerController mc;
-    private final String wsuri = "180.183.100.98";
+    private final String wsuri = "10.2.33.92";
     private final String webPort = ":8081";
     private final String socPort = ":8080";
     private List<Marker> selectedMarker = null;
@@ -127,6 +120,7 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMarker
         System.out.println("spi"+ distanceSpinner);
         lineSpinner = (Spinner)findViewById(R.id.bus_line_spinner);
         curPosBtn = (Button)findViewById(R.id.current_location_button);
+        curPosBtn.setBackgroundResource(R.drawable.curlocation);
         System.out.println("init component");
     }
 
@@ -136,7 +130,6 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMarker
         setCurPosBtn();
         setSelectBtn();
         setCancelBtn();
-        Toast.makeText(getApplicationContext(), "Add Busline Already", Toast.LENGTH_SHORT).show();
     }
 
     private void setState(short state) {
@@ -148,6 +141,7 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMarker
             if(circle != null)
                 circle.setVisible(false);
             Toast.makeText(getApplicationContext(), "Standby", Toast.LENGTH_SHORT).show();
+            if (mc != null)mc.reAllAlpha();
         }
         else if (this.state == state_selection) {
             distanceSpinner.setVisibility(View.VISIBLE);
@@ -160,7 +154,7 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMarker
         else {
             alertBus();
             cancelBtn.setVisibility(View.INVISIBLE);
-            Toast.makeText(getApplicationContext(), "Notificatoin", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getApplicationContext(), "Notification", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -212,7 +206,8 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMarker
 
                 if (lineFilter == 0)
                     for (String s : busID)
-                        markers.get(s).setVisible(true);
+//                        if (Integer.parseInt(s) > 0 && Integer.parseInt(s) < 6)
+                            markers.get(s).setVisible(true);
 
                 else
                     for (String s : busID)
@@ -306,7 +301,8 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMarker
     }
 
     public void moveToCurrent(){
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(curPos, 15));
+        if(curPos != null)
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(curPos, 15));
     }
 
     @Override
@@ -322,7 +318,6 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMarker
                 selectedMarker.add(marker);
                 mc.reAlpha(marker);
             }
-            Toast.makeText(getApplicationContext(), selectedMarker.toString(), Toast.LENGTH_SHORT).show();
         }
 
         return true;
@@ -342,11 +337,14 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMarker
             }
             else{
                 marker = mMap.addMarker(new MarkerOptions().position(new LatLng(lat, lng)));
+                marker.setAnchor(0.5f,0.5f);
+                marker.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.currentlocation));
                 circle = mMap.addCircle(new CircleOptions()
                         .center(new LatLng(lat, lng))
                         .radius(Double.parseDouble(distanceSpinner.getSelectedItem().toString()))
-                        .strokeColor(0x0B610B)
-                        .fillColor(0x5500ff00)
+                        .strokeColor(0x996C9FF0)
+                        .fillColor(0x80CCD8EB)
+                        .strokeWidth(5)
                         .visible(false)
 
                 );
@@ -456,9 +454,10 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMarker
     private void alertBus(){
 
         if (checkDistance()) {
+            setState(state_standby);
+
             Context context = this.getApplicationContext();
 
-            Toast.makeText(getApplicationContext(), checkDistance() + "", Toast.LENGTH_SHORT).show();
             NotificationManager notificationManager
                     = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
             Notification.Builder builder = new Notification.Builder(context);
@@ -470,9 +469,9 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMarker
             builder
                     .setSmallIcon(R.drawable.ic_launcher)
                     .setContentTitle("KUBus")
-                    .setContentText("this is a book")
-                    .setContentInfo("kok")
-                    .setTicker("The winter is coming")
+                    .setContentText("Bus is coming")
+//                    .setContentInfo("kok")
+                    .setTicker("Bus is coming")
                     .setLights(0xFFFF0000, 500, 500) //setLights (int argb, int onMs, int offMs)
                     .setContentIntent(pendingIntent)
                     .setAutoCancel(true)
@@ -492,8 +491,6 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMarker
         dist = Math.acos(dist);
         dist = rad2deg(dist);
         dist = dist * 60 * 1.1515* 1.609344;
-//        Toast.makeText(getApplicationContext(), dist+"", Toast.LENGTH_SHORT).show();
-//        Toast.makeText(getApplicationContext(), distanceSpinner.getSelectedItem().toString(), Toast.LENGTH_SHORT).show();
 
         return (dist*1000);
     }

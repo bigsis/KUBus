@@ -76,6 +76,9 @@ public class MarkerController {
         else if( id == 5){
             bd = BitmapDescriptorFactory.fromResource(R.drawable.bus5);
         }
+        else{
+            bd = BitmapDescriptorFactory.fromResource(R.drawable.bus5);
+        }
         return bd;
     }
 
